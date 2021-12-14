@@ -1,0 +1,273 @@
+---
+title: "Assignment-4"
+author: "Asher John"
+date: "12/12/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(readxl)
+library(ggplot2)
+library(dplyr)
+library(broom)
+library(ggpubr)
+library(tidyverse)
+library(coefplot)
+library(car)
+library(lawstat)
+
+
+## Getting studentized deleted residuals and applying Bonferroni procedure.
+
+Rental.1 <-  read_xlsx("rental.xlsx")
+
+model.1 <- lm(Y ~ ., data = Rental.1)
+
+plot( rstudent(model.1) ~ fitted(model.1) )
+abline( h=0 )
+tcrit = qt( 1-(.10/(2*81)), 75 )
+abline( h=tcrit, lty=2 )
+abline( h=-tcrit, lty=2 )
+
+cbind(
+  'e' = round(resid(model.1), 3),
+  'h' = round(hatvalues(model.1), 3),
+  't' = round(rstudent(model.1), 3))
+
+```
+
+#### EX 10.12. A. 
+
+Ans. The studentized deleted residual was obtained and Bonferroni procedure with a= .01 was used. The t* value was 3.36 and none of the studentized deleted residual was bigger than this. This shows that all the observations were within the bounds and there was no outlier. This is also obvious from the plot, all the values are within 3 standard deviations.
+
+
+```{r}
+## Obtauning the diagonal elements of the hat matrix
+
+fit <- lm(Y ~ ., data = Rental.1)
+
+summary(fit)
+
+anova(fit)
+
+cbind(
+  'X.1'   = model.frame(fit)$X.1,
+  'X.2'   = model.frame(fit)$X.2,
+  'X.3'   = model.frame(fit)$X.3,
+  'X.4'   = model.frame(fit)$X.4,
+  'Y'    = model.frame(fit)$Y,
+  'Yhat' = fitted(fit), 
+  'e'    = resid(fit),
+  'h'    = hatvalues(fit),
+  's'    = deviance(fit) * (1 - hatvalues(fit)))
+```
+
+#### EX. 10.12. B
+
+Observations 65, 61, 53, 8, and 3 are outliers as they exceed the leverage value h=2p/n= 1/8= .125.
+
+```{r}
+## hat matrix building
+X_0 <- data.frame(Rental.1[,c(2:5)])
+X <- data.matrix(X_0,rownames.force = NA)
+
+t(X)
+
+ solve(t(X) %*% X)
+ 
+ X_n <- matrix( c( 10, 12, 0.05, 350000),  byrow=F )
+ 
+ H_nn <- t(X_n) %*% solve(t(X) %*% X) %*% X_n
+ 
+ H_nn
+
+```
+
+#### EX. 10.12. C
+
+The H_nn valuse gained was 0.05203 which is well within the range of the h leverage values for the data, we can conclude no hidden extrapolation is involved.
+
+
+```{r}
+## Getting  COOK's, DFFITS and DFBETAS values.
+
+influence.measures(fit)
+
+influence.measures(fit)$is.inf
+
+
+```
+#### Ans. D. 
+
+According to COOK, DFFITS and DFBETAS value obseravtion 6 shows influence by DFFITS criterion. Other observations seem OK. 
+
+
+```{r}
+## Calculating the average absolute percent difference. 
+
+fit <- lm(Y ~ ., data = Rental.1)
+
+data.new1 <-  Rental.1[-c(3), ] 
+
+data.new1
+
+model.2 <- lm(Y ~ ., data = data.new1)
+
+Dif <- mean(abs((fitted(model.2)-fitted(fit))/fitted(fit))*100)/80
+
+Dif
+```
+##### The observation 3 only shows a .09% difference and that is not influential. 
+
+```{r}
+data.new2 <-  Rental.1[-c(8), ] 
+
+data.new2
+
+model.3 <- lm(Y ~ ., data = data.new2)
+
+Dif.2 <- mean(abs((fitted(model.3)-fitted(fit))/fitted(fit))*100)/80
+Dif.2
+```
+
+##### The observation 8 only shows a .08% difference and that is not influential. 
+
+
+```{r}
+data.new3 <-  Rental.1[-c(53), ] 
+
+data.new3
+
+model.4 <- lm(Y ~ ., data = data.new3)
+
+Dif.3 <- mean(abs((fitted(model.4)-fitted(fit))/fitted(fit))*100)/80
+Dif.3
+```
+
+##### The observation 53 only shows a .04% difference and that is not influential. 
+
+```{r}
+data.new4 <-  Rental.1[-c(61), ] 
+
+data.new4
+
+model.5 <- lm(Y ~ ., data = data.new4)
+
+Dif.4 <- mean(abs((fitted(model.5)-fitted(fit))/fitted(fit))*100)/80
+Dif.4
+```
+
+##### The observation 61 only shows a .03% difference and that is not influential. 
+
+
+```{r}
+## Plotting Cook's Distance
+
+plot( cooks.distance(fit), type='o',
+pch=19 )
+```
+
+#### EX. 10.12.F. 
+
+Cook's values for all plots were calculated see line. 97. According to the index plot none of the cases is influential. 
+
+## EX. 11.6
+
+```{r}
+
+df <- read_xlsx("final.xlsx")
+df
+fit <- lm(Y ~ X, df)
+
+summary(fit)
+
+## Residual plot against X is obtained.
+plot(resid(fit) ~ X, df, xlab = "X", ylab = "Residual")
+title("(b) Residual Plot Against X")
+abline(0, 0)
+```
+
+#### EX. 11.6. A.
+
+The line of fit is: Y = 17.720 + 3.423X
+
+The residual plot against X shows a megaphone effect where residual values seem to increase with increasing Y Values. 
+
+```{r}
+## Values are divided into two groups.
+
+ei <-  resid(fit)
+
+```
+#### EX. 11.6. B.
+
+```{r}
+## Absolute Residual plot against X is obtained.
+plot(abs(resid(fit)) ~ X, data = df, xlab = "X", ylab = "Absolute Residual")
+title("(c) Absolute Residual Plot Against X")
+abline(lm(abs(resid(fit)) ~ X, data = df))
+
+```
+
+#### EX. 11.6. C.
+
+The absolute residual plot against X shows a linear association with increasing X values residual increases. 
+
+```{r}
+## absolute residual is regressed against X.
+fit <- lm(Y ~ X, df)
+
+w <- fitted(lm(abs(resid(fit)) ~ X, df))^(-2)
+fit <- update(fit, weights = w)
+summary(fit)
+cbind(
+  "Subject" = seq(nrow(df)),
+  "X"     = df$X,
+  "Y"     = df$Y,
+  "e"       = round(resid(lm(Y ~ X, df)), 2),
+  "Abs.Res"  = round(abs(resid(lm(Y ~ X, df))), 2),
+  "s"       = round(sqrt(1 / w), 4),
+  "w"       = round(fit$weights, 5))
+
+
+abs.res.regression <- lm(abs(resid(fit)) ~ X, data = df)
+
+summary(abs.res.regression)
+
+wls_model <- lm(Y ~ X, data = df, weights=w)
+
+summary(wls_model)
+
+
+
+```
+
+#### 11.6.D.
+
+The regression function for absolute residual against X is : s = -1.585 + 0.3652X.
+
+Case. 7 receives the largest weight and case 3 receives the smallest weight. 
+
+##### 11.6.E. 
+
+The new estimates were obtained using WLS, these were Y= 17.301 + 3.421X. This is not very different from  the original fit = Y = 17.720 + 3.423X
+
+##### 11.6.F.
+
+The residual std error in weighted least square is 1.159 which is little less than  1.202 from the ordinary least squares. std error of b_0 and b_1 are 4.8277 and 0.3703 respectively, these are also little different from the ordinary least square b_0 = 4.803 and b_1 = 0.377. 
+
+
+```{r}
+fit <- update(fit, weights = w)
+summary(fit)
+
+```
+
+#### EX. 11.6. G. 
+
+The first iterations made no change in the intercept and b_1. 
+
